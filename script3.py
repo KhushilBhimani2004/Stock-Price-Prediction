@@ -37,7 +37,14 @@ if ticker_symbol:
     # dataset['Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
 # Normalize the dataset using Min-Max scaling
     # Normalize the dataset using Min-Max scaling
+    # Normalize the dataset using Min-Max scaling
     scaler = MinMaxScaler()
+    dataset_copy = dataset.copy()  # Make a copy of the DataFrame
+    
+    dataset_copy.loc[:, 'Close'] = scaler.fit_transform(dataset_copy['Close'].values.reshape(-1, 1))
+
+# Use dataset_copy for subsequent operations
+
     dataset.loc[:, 'Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
 
 
