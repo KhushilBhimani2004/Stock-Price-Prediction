@@ -18,7 +18,8 @@ uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 st.header("Select a Stock from Yahoo Finance")
 ticker_symbol = st.text_input("Enter the stock symbol (e.g., AAPL for Apple):")
 
-# Initialize model outside of button callbacks
+# Initialize model and training state
+model_trained = False
 model = None
 
 if ticker_symbol:
@@ -50,7 +51,6 @@ if ticker_symbol:
         time_steps = st.number_input("Number of Time Steps", min_value=1, max_value=30, value=5)
 
         if st.button("Train LSTM Model"):
-            global model
             # Create the training dataset
             X_train, y_train = create_dataset(dataset.values, time_steps)
 
@@ -69,13 +69,14 @@ if ticker_symbol:
             # Train the model
             model.fit(X_train, y_train, epochs=10, batch_size=1)
 
+            model_trained = True
             st.success("LSTM Model Trained")
 
     except Exception as e:
         st.error(f"Error fetching data: {str(e)}")
 
 # Make predictions
-if model is not None:
+if model_trained:
     try:
         if st.button("Make Predictions"):
             last_days = dataset[-time_steps:].values
