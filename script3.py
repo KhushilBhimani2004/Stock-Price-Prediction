@@ -79,11 +79,10 @@ if ticker_symbol:
 if model_trained:
     try:
         if st.button("Make Predictions"):
-            # Ensure scaler is fitted on entire dataset before inverse_transform
-            dataset_scaled = scaler.transform(dataset['Close'].values.reshape(-1, 1))
-
             # Prepare data for prediction
-            X_pred = dataset_scaled[-time_steps:].reshape(1, time_steps, 1)
+            last_days = dataset[-time_steps:].values
+            last_days_scaled = scaler.transform(last_days.reshape(-1, 1))
+            X_pred = last_days_scaled.reshape(1, time_steps, 1)
 
             # Make prediction
             predicted_price = model.predict(X_pred)
