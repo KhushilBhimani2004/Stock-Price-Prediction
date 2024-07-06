@@ -7,7 +7,6 @@ from tensorflow.keras.layers import LSTM, Dense
 import plotly.graph_objects as go
 import plotly.express as px
 import yfinance as yf
-model = Sequential()
 
 st.title("Stock Price Prediction with LSTM")
 
@@ -69,7 +68,6 @@ if ticker_symbol:
 
         st.success("LSTM Model Trained")
 
-    
     # Make predictions
     if st.button("Make Predictions"):
         last_days = dataset[-time_steps:].values
@@ -88,20 +86,20 @@ if ticker_symbol:
     line_fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name='Close Price'))
     st.plotly_chart(line_fig, use_container_width=True)
 
-        # Interactive scatter plot for "High" and "Low" columns
+    # Interactive scatter plot for "High" and "Low" columns
     st.header("High VS Low")
     high_low_fig = px.line(data, x=data.index, y=['High', 'Low'], labels={'x': 'Date', 'value': 'Price'})
     st.plotly_chart(high_low_fig, use_container_width=True)
+
     # Interactive historical stock price plot
     st.header("Historical Stock Prices")
     fig = go.Figure(data=[go.Candlestick(x=data.index,
-                open=data['Open'],
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close'])])
+                                         open=data['Open'],
+                                         high=data['High'],
+                                         low=data['Low'],
+                                         close=data['Close'])])
 
     # Set y-axis interval to 20 values
     fig.update_yaxes(range=[100, max(data['High'])], dtick=10)
 
     st.plotly_chart(fig, use_container_width=True)
-    
