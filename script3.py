@@ -36,8 +36,10 @@ if ticker_symbol:
     # scaler = MinMaxScaler()
     # dataset['Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
 # Normalize the dataset using Min-Max scaling
+    # Normalize the dataset using Min-Max scaling
     scaler = MinMaxScaler()
     dataset.loc[:, 'Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
+
 
     # Create a function to prepare data for LSTM
     def create_dataset(data, time_steps=1):
