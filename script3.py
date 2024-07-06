@@ -21,7 +21,7 @@ ticker_symbol = st.text_input("Enter the stock symbol (e.g., AAPL for Apple):")
 if ticker_symbol:
     # Fetch stock data from yfinance
     stock_data = yf.Ticker(ticker_symbol)
-    data = stock_data.history(period="5Y")
+    data = stock_data.history(period="5y")
 
     st.subheader("Fetched Data from Yahoo Finance")
     st.write(data)
@@ -70,15 +70,18 @@ if ticker_symbol:
 
     # Make predictions
     if st.button("Make Predictions"):
-        last_days = dataset[-time_steps:].values
-        last_days = last_days.reshape(1, -1, 1)
-        next_day_price = model.predict(last_days)
+        if 'model' in globals():
+            last_days = dataset[-time_steps:].values
+            last_days = last_days.reshape(1, -1, 1)
+            next_day_price = model.predict(last_days)
 
-        # Rescale the prediction back to the original scale
-        next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
+            # Rescale the prediction back to the original scale
+            next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
 
-        st.subheader("Predicted Stock Price for the Next Day")
-        st.write(next_day_price[0][0])
+            st.subheader("Predicted Stock Price for the Next Day")
+            st.write(next_day_price[0][0])
+        else:
+            st.error("Please train the model first.")
 
     st.header("Open VS Close")
     line_fig = go.Figure()
@@ -103,3 +106,9 @@ if ticker_symbol:
     fig.update_yaxes(range=[100, max(data['High'])], dtick=10)
 
     st.plotly_chart(fig, use_container_width=True)
+
+# Handle uploaded file (optional feature, added for completeness)
+if uploaded_file:
+    uploaded_data = pd.read_csv(uploaded_file)
+    st.subheader("Uploaded CSV File Data")
+    st.write(uploaded_data)
