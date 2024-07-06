@@ -21,6 +21,7 @@ ticker_symbol = st.text_input("Enter the stock symbol (e.g., AAPL for Apple):")
 # Initialize model and training state
 model_trained = False
 model = None
+scaler = MinMaxScaler()
 
 if ticker_symbol:
     try:
@@ -36,7 +37,6 @@ if ticker_symbol:
 
         # Extract the 'Close' prices
         dataset = data[['Close']].copy()  # Use .copy() to avoid SettingWithCopyWarning
-        scaler = MinMaxScaler()
         dataset.loc[:, 'Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
 
         # Create a function to prepare data for LSTM
@@ -79,15 +79,20 @@ if ticker_symbol:
 if model_trained:
     try:
         if st.button("Make Predictions"):
-            last_days = dataset[-time_steps:].values
-            last_days = last_days.reshape(1, time_steps, 1)
-            next_day_price = model.predict(last_days)
+            # Ensure scaler is fitted on entire dataset before inverse_transform
+            dataset_scaled = scaler.transform(dataset['Close'].values.reshape(-1, 1))
 
-            # Rescale the prediction back to the original scale
-            next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
+            # Prepare data for prediction
+            X_pred = dataset_scaled[-time_steps:].reshape(1, time_steps, 1)
+
+            # Make prediction
+            predicted_price = model.predict(X_pred)
+
+            # Inverse transform to get actual price
+            predicted_price = scaler.inverse_transform(predicted_price)[0][0]
 
             st.subheader("Predicted Stock Price for the Next Day")
-            st.write(next_day_price[0][0])
+            st.write(predicted_price)
 
     except Exception as e:
         st.error(f"Error making predictions: {str(e)}")
