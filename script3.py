@@ -18,10 +18,7 @@ uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 st.header("Select a Stock from Yahoo Finance")
 ticker_symbol = st.text_input("Enter the stock symbol (e.g., AAPL for Apple):")
 
-# Initialize model and training state
-model_trained = False
-model = None
-scaler = MinMaxScaler()
+model = Sequential()
 
 if ticker_symbol:
     try:
@@ -36,8 +33,11 @@ if ticker_symbol:
         st.header("Predict Stock Prices")
 
         # Extract the 'Close' prices
-        dataset = data[['Close']].copy()  # Use .copy() to avoid SettingWithCopyWarning
-        dataset.loc[:, 'Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
+        dataset = data[['Close']]
+
+        # Normalize the dataset using Min-Max scaling
+        scaler = MinMaxScaler()
+        dataset['Close'] = scaler.fit_transform(dataset['Close'].values.reshape(-1, 1))
 
         # Create a function to prepare data for LSTM
         def create_dataset(data, time_steps=1):
@@ -57,8 +57,10 @@ if ticker_symbol:
             # Reshape the data for LSTM input
             X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
 
-            # Create an LSTM model
+            # Clear existing model state to ensure fresh start
             model = Sequential()
+
+            # Create an LSTM model
             model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
             model.add(LSTM(units=50))
             model.add(Dense(1))
@@ -69,32 +71,23 @@ if ticker_symbol:
             # Train the model
             model.fit(X_train, y_train, epochs=10, batch_size=1)
 
-            model_trained = True
             st.success("LSTM Model Trained")
 
-    except Exception as e:
-        st.error(f"Error fetching data: {str(e)}")
-
-# Make predictions
-if model_trained:
-    try:
+        # Make predictions
         if st.button("Make Predictions"):
             # Prepare data for prediction
             last_days = dataset[-time_steps:].values
-            last_days_scaled = scaler.transform(last_days.reshape(-1, 1))
-            X_pred = last_days_scaled.reshape(1, time_steps, 1)
+            last_days = last_days.reshape(1, time_steps, 1)
+            next_day_price = model.predict(last_days)
 
-            # Make prediction
-            predicted_price = model.predict(X_pred)
-
-            # Inverse transform to get actual price
-            predicted_price = scaler.inverse_transform(predicted_price)[0][0]
+            # Rescale the prediction back to the original scale
+            next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
 
             st.subheader("Predicted Stock Price for the Next Day")
-            st.write(predicted_price)
+            st.write(next_day_price[0][0])
 
     except Exception as e:
-        st.error(f"Error making predictions: {str(e)}")
+        st.error(f"Error fetching data: {str(e)}")
 
 # Display stock price charts
 if 'data' in locals():
