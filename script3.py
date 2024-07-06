@@ -50,6 +50,7 @@ if ticker_symbol:
         time_steps = st.number_input("Number of Time Steps", min_value=1, max_value=30, value=5)
 
         if st.button("Train LSTM Model"):
+            global model
             # Create the training dataset
             X_train, y_train = create_dataset(dataset.values, time_steps)
 
@@ -57,7 +58,6 @@ if ticker_symbol:
             X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
 
             # Create an LSTM model
-            global model
             model = Sequential()
             model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
             model.add(LSTM(units=50))
