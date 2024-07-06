@@ -18,6 +18,9 @@ uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 st.header("Select a Stock from Yahoo Finance")
 ticker_symbol = st.text_input("Enter the stock symbol (e.g., AAPL for Apple):")
 
+# Initialize model outside of button callbacks
+model = None
+
 if ticker_symbol:
     try:
         # Fetch stock data from yfinance
@@ -54,6 +57,7 @@ if ticker_symbol:
             X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
 
             # Create an LSTM model
+            global model
             model = Sequential()
             model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
             model.add(LSTM(units=50))
@@ -67,20 +71,24 @@ if ticker_symbol:
 
             st.success("LSTM Model Trained")
 
-        # Make predictions
-        if st.button("Make Predictions"):
-            last_days = dataset[-time_steps:].values
-            last_days = last_days.reshape(1, time_steps, 1)
-            next_day_price = model.predict(last_days)
+    except Exception as e:
+        st.error(f"Error fetching data: {str(e)}")
 
-            # Rescale the prediction back to the original scale
-            next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
+# Make predictions
+if model is not None and st.button("Make Predictions"):
+    try:
+        last_days = dataset[-time_steps:].values
+        last_days = last_days.reshape(1, time_steps, 1)
+        next_day_price = model.predict(last_days)
 
-            st.subheader("Predicted Stock Price for the Next Day")
-            st.write(next_day_price[0][0])
+        # Rescale the prediction back to the original scale
+        next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
+
+        st.subheader("Predicted Stock Price for the Next Day")
+        st.write(next_day_price[0][0])
 
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Error making predictions: {str(e)}")
 
 # Display stock price charts
 if 'data' in locals():
