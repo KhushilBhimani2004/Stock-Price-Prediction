@@ -75,17 +75,18 @@ if ticker_symbol:
         st.error(f"Error fetching data: {str(e)}")
 
 # Make predictions
-if model is not None and st.button("Make Predictions"):
+if model is not None:
     try:
-        last_days = dataset[-time_steps:].values
-        last_days = last_days.reshape(1, time_steps, 1)
-        next_day_price = model.predict(last_days)
+        if st.button("Make Predictions"):
+            last_days = dataset[-time_steps:].values
+            last_days = last_days.reshape(1, time_steps, 1)
+            next_day_price = model.predict(last_days)
 
-        # Rescale the prediction back to the original scale
-        next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
+            # Rescale the prediction back to the original scale
+            next_day_price = scaler.inverse_transform(next_day_price.reshape(-1, 1))
 
-        st.subheader("Predicted Stock Price for the Next Day")
-        st.write(next_day_price[0][0])
+            st.subheader("Predicted Stock Price for the Next Day")
+            st.write(next_day_price[0][0])
 
     except Exception as e:
         st.error(f"Error making predictions: {str(e)}")
