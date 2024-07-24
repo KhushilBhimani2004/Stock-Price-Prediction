@@ -1,4 +1,4 @@
-#Stock Price Prediction with LSTM
+##Stock Price Prediction with LSTM##
 
 Developed a comprehensive stock price prediction application using LSTM (Long Short-Term Memory) neural networks, integrated with Streamlit for a user-friendly interface. The application allows users to upload a CSV file with historical stock prices or fetch data directly from Yahoo Finance.
 
