@@ -6,6 +6,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 import plotly.graph_objects as go
 import yfinance as yf
+import requests
 
 # ---------------------------------------------------------
 # PAGE CONFIG
@@ -41,22 +42,26 @@ if ticker_symbol:
 
         with st.spinner("Fetching stock data..."):
 
-            # MORE STABLE METHOD
+            session = requests.Session()
+
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0"
+            })
+
             data = yf.download(
                 ticker_symbol,
                 period="5y",
                 interval="1d",
                 progress=False,
-                threads=False
+                threads=False,
+                session=session
             )
 
         # ---------------------------------------------------------
         # CHECK EMPTY DATA
         # ---------------------------------------------------------
         if data.empty:
-            st.error(
-                "❌ No data found. Please check stock symbol."
-            )
+            st.error("❌ No data found. Please check stock symbol.")
             st.stop()
 
         # ---------------------------------------------------------
@@ -86,16 +91,16 @@ if ticker_symbol:
         # ---------------------------------------------------------
         # CREATE DATASET FUNCTION
         # ---------------------------------------------------------
-        def create_dataset(data, time_steps=1):
+        def create_dataset(data_array, time_steps=1):
 
             X = []
             y = []
 
-            for i in range(len(data) - time_steps):
+            for i in range(len(data_array) - time_steps):
 
-                X.append(data[i:(i + time_steps), 0])
+                X.append(data_array[i:(i + time_steps), 0])
 
-                y.append(data[i + time_steps, 0])
+                y.append(data_array[i + time_steps, 0])
 
             return np.array(X), np.array(y)
 
@@ -118,20 +123,17 @@ if ticker_symbol:
 
             with st.spinner("Training model..."):
 
-                # CREATE DATASET
                 X_train, y_train = create_dataset(
                     dataset_scaled,
                     time_steps
                 )
 
-                # RESHAPE
                 X_train = X_train.reshape(
                     X_train.shape[0],
                     X_train.shape[1],
                     1
                 )
 
-                # MODEL
                 model = Sequential()
 
                 model.add(
@@ -146,13 +148,11 @@ if ticker_symbol:
 
                 model.add(Dense(1))
 
-                # COMPILE
                 model.compile(
                     optimizer='adam',
                     loss='mean_squared_error'
                 )
 
-                # TRAIN
                 model.fit(
                     X_train,
                     y_train,
@@ -161,7 +161,6 @@ if ticker_symbol:
                     verbose=1
                 )
 
-                # SAVE MODEL
                 st.session_state.model = model
 
             st.success("✅ LSTM Model Trained Successfully")
@@ -181,22 +180,18 @@ if ticker_symbol:
 
                 with st.spinner("Predicting..."):
 
-                    # LAST DAYS
                     last_days = dataset_scaled[-time_steps:]
 
-                    # RESHAPE
                     last_days = last_days.reshape(
                         1,
                         time_steps,
                         1
                     )
 
-                    # PREDICT
                     predicted_price = (
                         st.session_state.model.predict(last_days)
                     )
 
-                    # INVERSE TRANSFORM
                     predicted_price = scaler.inverse_transform(
                         predicted_price
                     )
@@ -294,7 +289,6 @@ if ticker_symbol:
     except Exception as e:
 
         st.error(f"❌ Error: {str(e)}")
-
 
 # import streamlit as st
 # import pandas as pd
