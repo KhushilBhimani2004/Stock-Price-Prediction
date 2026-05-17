@@ -188,7 +188,15 @@ if ticker_symbol:
 # -------------------------------
 if 'data' in locals() and not data.empty:
 
+    # Convert columns safely
+    open_prices = data['Open'].squeeze()
+    close_prices = data['Close'].squeeze()
+    high_prices = data['High'].squeeze()
+    low_prices = data['Low'].squeeze()
+
+    # -------------------------------
     # Open vs Close
+    # -------------------------------
     st.header("Open VS Close")
 
     line_fig = go.Figure()
@@ -196,7 +204,7 @@ if 'data' in locals() and not data.empty:
     line_fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=data['Open'],
+            y=open_prices,
             mode='lines',
             name='Open Price'
         )
@@ -205,7 +213,7 @@ if 'data' in locals() and not data.empty:
     line_fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=data['Close'],
+            y=close_prices,
             mode='lines',
             name='Close Price'
         )
@@ -216,7 +224,9 @@ if 'data' in locals() and not data.empty:
         use_container_width=True
     )
 
+    # -------------------------------
     # High vs Low
+    # -------------------------------
     st.header("High VS Low")
 
     high_low_fig = go.Figure()
@@ -224,7 +234,7 @@ if 'data' in locals() and not data.empty:
     high_low_fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=data['High'],
+            y=high_prices,
             mode='lines',
             name='High Price'
         )
@@ -233,7 +243,7 @@ if 'data' in locals() and not data.empty:
     high_low_fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=data['Low'],
+            y=low_prices,
             mode='lines',
             name='Low Price'
         )
@@ -244,17 +254,19 @@ if 'data' in locals() and not data.empty:
         use_container_width=True
     )
 
+    # -------------------------------
     # Candlestick Chart
+    # -------------------------------
     st.header("Historical Stock Prices")
 
     fig = go.Figure(
         data=[
             go.Candlestick(
                 x=data.index,
-                open=data['Open'],
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close']
+                open=open_prices,
+                high=high_prices,
+                low=low_prices,
+                close=close_prices
             )
         ]
     )
