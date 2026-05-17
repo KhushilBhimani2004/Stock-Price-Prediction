@@ -8,14 +8,17 @@ import plotly.graph_objects as go
 import yfinance as yf
 
 # ---------------------------------------------------
-# Streamlit Page Config
+# Page Config
 # ---------------------------------------------------
-st.set_page_config(page_title="Stock Price Prediction", layout="wide")
+st.set_page_config(
+    page_title="Stock Price Prediction with LSTM",
+    layout="wide"
+)
 
 st.title("📈 Stock Price Prediction with LSTM")
 
 # ---------------------------------------------------
-# Stock Selection
+# Stock Symbol Input
 # ---------------------------------------------------
 st.header("Select a Stock from Yahoo Finance")
 
@@ -24,26 +27,30 @@ ticker_symbol = st.text_input(
 ).upper()
 
 # ---------------------------------------------------
-# Session State for Model
+# Session State
 # ---------------------------------------------------
 if "model" not in st.session_state:
     st.session_state.model = None
 
 # ---------------------------------------------------
-# Fetch Data
+# Fetch Stock Data
 # ---------------------------------------------------
 if ticker_symbol:
 
     try:
+
         with st.spinner("Fetching stock data..."):
 
-            stock_data = yf.Ticker(ticker_symbol)
-
-            # FIXED: use lowercase 5y
-            data = stock_data.history(period="5y")
+            # FIXED: More reliable than Ticker().history()
+            data = yf.download(
+                ticker_symbol,
+                period="5y",
+                progress=False,
+                auto_adjust=False
+            )
 
         # ---------------------------------------------------
-        # Handle Empty Data
+        # Check if Data Exists
         # ---------------------------------------------------
         if data.empty:
             st.error("❌ No data found. Please check the stock symbol.")
@@ -54,12 +61,12 @@ if ticker_symbol:
         # ---------------------------------------------------
         # Display Data
         # ---------------------------------------------------
-        st.subheader("Fetched Data from Yahoo Finance")
+        st.subheader("Fetched Data")
 
         st.dataframe(data)
 
         # ---------------------------------------------------
-        # Dataset Preparation
+        # Prepare Dataset
         # ---------------------------------------------------
         dataset = data[['Close']].copy()
 
@@ -84,7 +91,7 @@ if ticker_symbol:
             return np.array(X), np.array(y)
 
         # ---------------------------------------------------
-        # Time Steps Input
+        # Time Steps
         # ---------------------------------------------------
         time_steps = st.number_input(
             "Number of Time Steps",
@@ -100,7 +107,7 @@ if ticker_symbol:
 
         if st.button("Train LSTM Model"):
 
-            with st.spinner("Training model..."):
+            with st.spinner("Training LSTM model..."):
 
                 # Create Dataset
                 X_train, y_train = create_dataset(
@@ -130,13 +137,13 @@ if ticker_symbol:
 
                 model.add(Dense(1))
 
-                # Compile
+                # Compile Model
                 model.compile(
                     loss='mean_squared_error',
                     optimizer='adam'
                 )
 
-                # Train
+                # Train Model
                 model.fit(
                     X_train,
                     y_train,
@@ -151,7 +158,7 @@ if ticker_symbol:
             st.success("✅ LSTM Model Trained Successfully")
 
         # ---------------------------------------------------
-        # Prediction
+        # Prediction Section
         # ---------------------------------------------------
         st.header("Predict Next Day Stock Price")
 
@@ -165,7 +172,7 @@ if ticker_symbol:
 
                 with st.spinner("Predicting stock price..."):
 
-                    # Last N Days
+                    # Get Last Days
                     last_days = dataset[-time_steps:].values
 
                     # Reshape
@@ -175,12 +182,12 @@ if ticker_symbol:
                         1
                     )
 
-                    # Prediction
+                    # Predict
                     next_day_price = st.session_state.model.predict(
                         last_days
                     )
 
-                    # Inverse Transform
+                    # Reverse Scaling
                     next_day_price = scaler.inverse_transform(
                         next_day_price.reshape(-1, 1)
                     )
@@ -190,13 +197,13 @@ if ticker_symbol:
                 st.success(f"${next_day_price[0][0]:.2f}")
 
         # ---------------------------------------------------
-        # Charts
+        # Open vs Close Chart
         # ---------------------------------------------------
         st.header("📊 Open vs Close Prices")
 
-        line_fig = go.Figure()
+        open_close_fig = go.Figure()
 
-        line_fig.add_trace(
+        open_close_fig.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['Open'],
@@ -205,7 +212,7 @@ if ticker_symbol:
             )
         )
 
-        line_fig.add_trace(
+        open_close_fig.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['Close'],
@@ -214,13 +221,16 @@ if ticker_symbol:
             )
         )
 
-        line_fig.update_layout(
+        open_close_fig.update_layout(
             xaxis_title="Date",
             yaxis_title="Price",
             template="plotly_dark"
         )
 
-        st.plotly_chart(line_fig, use_container_width=True)
+        st.plotly_chart(
+            open_close_fig,
+            use_container_width=True
+        )
 
         # ---------------------------------------------------
         # High vs Low Chart
@@ -253,14 +263,17 @@ if ticker_symbol:
             template="plotly_dark"
         )
 
-        st.plotly_chart(high_low_fig, use_container_width=True)
+        st.plotly_chart(
+            high_low_fig,
+            use_container_width=True
+        )
 
         # ---------------------------------------------------
         # Candlestick Chart
         # ---------------------------------------------------
         st.header("📉 Historical Stock Prices")
 
-        candlestick_fig = go.Figure(
+        candle_fig = go.Figure(
             data=[
                 go.Candlestick(
                     x=data.index,
@@ -272,14 +285,14 @@ if ticker_symbol:
             ]
         )
 
-        candlestick_fig.update_layout(
+        candle_fig.update_layout(
             xaxis_title="Date",
             yaxis_title="Price",
             template="plotly_dark"
         )
 
         st.plotly_chart(
-            candlestick_fig,
+            candle_fig,
             use_container_width=True
         )
 
@@ -289,6 +302,8 @@ if ticker_symbol:
     except Exception as e:
 
         st.error(f"❌ Error: {str(e)}")
+
+
 # import streamlit as st
 # import pandas as pd
 # import numpy as np
