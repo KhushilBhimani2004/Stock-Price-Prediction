@@ -7,92 +7,101 @@ from tensorflow.keras.layers import LSTM, Dense
 import plotly.graph_objects as go
 import yfinance as yf
 
-# ---------------------------------------------------
-# Page Config
-# ---------------------------------------------------
+# ---------------------------------------------------------
+# PAGE CONFIG
+# ---------------------------------------------------------
 st.set_page_config(
-    page_title="Stock Price Prediction with LSTM",
+    page_title="Stock Price Prediction",
     layout="wide"
 )
 
 st.title("📈 Stock Price Prediction with LSTM")
 
-# ---------------------------------------------------
-# Stock Symbol Input
-# ---------------------------------------------------
+# ---------------------------------------------------------
+# STOCK INPUT
+# ---------------------------------------------------------
 st.header("Select a Stock from Yahoo Finance")
 
 ticker_symbol = st.text_input(
     "Enter the stock symbol (e.g., AAPL for Apple):"
 ).upper()
 
-# ---------------------------------------------------
-# Session State
-# ---------------------------------------------------
+# ---------------------------------------------------------
+# SESSION STATE
+# ---------------------------------------------------------
 if "model" not in st.session_state:
     st.session_state.model = None
 
-# ---------------------------------------------------
-# Fetch Stock Data
-# ---------------------------------------------------
+# ---------------------------------------------------------
+# FETCH DATA
+# ---------------------------------------------------------
 if ticker_symbol:
 
     try:
 
         with st.spinner("Fetching stock data..."):
 
-            # FIXED: More reliable than Ticker().history()
+            # MORE STABLE METHOD
             data = yf.download(
                 ticker_symbol,
                 period="5y",
+                interval="1d",
                 progress=False,
-                auto_adjust=False
+                threads=False
             )
 
-        # ---------------------------------------------------
-        # Check if Data Exists
-        # ---------------------------------------------------
+        # ---------------------------------------------------------
+        # CHECK EMPTY DATA
+        # ---------------------------------------------------------
         if data.empty:
-            st.error("❌ No data found. Please check the stock symbol.")
+            st.error(
+                "❌ No data found. Please check stock symbol."
+            )
             st.stop()
 
-        st.success("✅ Stock data fetched successfully")
+        # ---------------------------------------------------------
+        # FIX MULTIINDEX ISSUE
+        # ---------------------------------------------------------
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
 
-        # ---------------------------------------------------
-        # Display Data
-        # ---------------------------------------------------
-        st.subheader("Fetched Data")
+        # ---------------------------------------------------------
+        # DISPLAY DATA
+        # ---------------------------------------------------------
+        st.success("✅ Data fetched successfully")
+
+        st.subheader("Fetched Stock Data")
 
         st.dataframe(data)
 
-        # ---------------------------------------------------
-        # Prepare Dataset
-        # ---------------------------------------------------
+        # ---------------------------------------------------------
+        # DATASET PREPARATION
+        # ---------------------------------------------------------
         dataset = data[['Close']].copy()
 
         scaler = MinMaxScaler(feature_range=(0, 1))
 
-        dataset['Close'] = scaler.fit_transform(dataset[['Close']])
+        dataset_scaled = scaler.fit_transform(dataset)
 
-        # ---------------------------------------------------
-        # Function to Create Dataset
-        # ---------------------------------------------------
-        def create_dataset(data_array, time_steps=1):
+        # ---------------------------------------------------------
+        # CREATE DATASET FUNCTION
+        # ---------------------------------------------------------
+        def create_dataset(data, time_steps=1):
 
             X = []
             y = []
 
-            for i in range(len(data_array) - time_steps):
+            for i in range(len(data) - time_steps):
 
-                X.append(data_array[i:(i + time_steps), 0])
+                X.append(data[i:(i + time_steps), 0])
 
-                y.append(data_array[i + time_steps, 0])
+                y.append(data[i + time_steps, 0])
 
             return np.array(X), np.array(y)
 
-        # ---------------------------------------------------
-        # Time Steps
-        # ---------------------------------------------------
+        # ---------------------------------------------------------
+        # TIME STEPS
+        # ---------------------------------------------------------
         time_steps = st.number_input(
             "Number of Time Steps",
             min_value=1,
@@ -100,29 +109,29 @@ if ticker_symbol:
             value=5
         )
 
-        # ---------------------------------------------------
-        # Train Model
-        # ---------------------------------------------------
+        # ---------------------------------------------------------
+        # TRAIN MODEL
+        # ---------------------------------------------------------
         st.header("Train LSTM Model")
 
         if st.button("Train LSTM Model"):
 
-            with st.spinner("Training LSTM model..."):
+            with st.spinner("Training model..."):
 
-                # Create Dataset
+                # CREATE DATASET
                 X_train, y_train = create_dataset(
-                    dataset.values,
+                    dataset_scaled,
                     time_steps
                 )
 
-                # Reshape for LSTM
+                # RESHAPE
                 X_train = X_train.reshape(
                     X_train.shape[0],
                     X_train.shape[1],
                     1
                 )
 
-                # Create Model
+                # MODEL
                 model = Sequential()
 
                 model.add(
@@ -137,13 +146,13 @@ if ticker_symbol:
 
                 model.add(Dense(1))
 
-                # Compile Model
+                # COMPILE
                 model.compile(
-                    loss='mean_squared_error',
-                    optimizer='adam'
+                    optimizer='adam',
+                    loss='mean_squared_error'
                 )
 
-                # Train Model
+                # TRAIN
                 model.fit(
                     X_train,
                     y_train,
@@ -152,15 +161,15 @@ if ticker_symbol:
                     verbose=1
                 )
 
-                # Save Model
+                # SAVE MODEL
                 st.session_state.model = model
 
             st.success("✅ LSTM Model Trained Successfully")
 
-        # ---------------------------------------------------
-        # Prediction Section
-        # ---------------------------------------------------
-        st.header("Predict Next Day Stock Price")
+        # ---------------------------------------------------------
+        # PREDICTION
+        # ---------------------------------------------------------
+        st.header("Predict Stock Price")
 
         if st.button("Make Predictions"):
 
@@ -170,40 +179,44 @@ if ticker_symbol:
 
             else:
 
-                with st.spinner("Predicting stock price..."):
+                with st.spinner("Predicting..."):
 
-                    # Get Last Days
-                    last_days = dataset[-time_steps:].values
+                    # LAST DAYS
+                    last_days = dataset_scaled[-time_steps:]
 
-                    # Reshape
+                    # RESHAPE
                     last_days = last_days.reshape(
                         1,
                         time_steps,
                         1
                     )
 
-                    # Predict
-                    next_day_price = st.session_state.model.predict(
-                        last_days
+                    # PREDICT
+                    predicted_price = (
+                        st.session_state.model.predict(last_days)
                     )
 
-                    # Reverse Scaling
-                    next_day_price = scaler.inverse_transform(
-                        next_day_price.reshape(-1, 1)
+                    # INVERSE TRANSFORM
+                    predicted_price = scaler.inverse_transform(
+                        predicted_price
                     )
 
-                st.subheader("📌 Predicted Stock Price for Next Day")
+                st.subheader(
+                    "📌 Predicted Next Day Closing Price"
+                )
 
-                st.success(f"${next_day_price[0][0]:.2f}")
+                st.success(
+                    f"${predicted_price[0][0]:.2f}"
+                )
 
-        # ---------------------------------------------------
-        # Open vs Close Chart
-        # ---------------------------------------------------
-        st.header("📊 Open vs Close Prices")
+        # ---------------------------------------------------------
+        # OPEN VS CLOSE
+        # ---------------------------------------------------------
+        st.header("📊 Open vs Close")
 
-        open_close_fig = go.Figure()
+        fig1 = go.Figure()
 
-        open_close_fig.add_trace(
+        fig1.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['Open'],
@@ -212,7 +225,7 @@ if ticker_symbol:
             )
         )
 
-        open_close_fig.add_trace(
+        fig1.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['Close'],
@@ -221,25 +234,19 @@ if ticker_symbol:
             )
         )
 
-        open_close_fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Price",
-            template="plotly_dark"
-        )
-
         st.plotly_chart(
-            open_close_fig,
+            fig1,
             use_container_width=True
         )
 
-        # ---------------------------------------------------
-        # High vs Low Chart
-        # ---------------------------------------------------
-        st.header("📊 High vs Low Prices")
+        # ---------------------------------------------------------
+        # HIGH VS LOW
+        # ---------------------------------------------------------
+        st.header("📊 High vs Low")
 
-        high_low_fig = go.Figure()
+        fig2 = go.Figure()
 
-        high_low_fig.add_trace(
+        fig2.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['High'],
@@ -248,7 +255,7 @@ if ticker_symbol:
             )
         )
 
-        high_low_fig.add_trace(
+        fig2.add_trace(
             go.Scatter(
                 x=data.index,
                 y=data['Low'],
@@ -257,23 +264,17 @@ if ticker_symbol:
             )
         )
 
-        high_low_fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Price",
-            template="plotly_dark"
-        )
-
         st.plotly_chart(
-            high_low_fig,
+            fig2,
             use_container_width=True
         )
 
-        # ---------------------------------------------------
-        # Candlestick Chart
-        # ---------------------------------------------------
+        # ---------------------------------------------------------
+        # CANDLESTICK
+        # ---------------------------------------------------------
         st.header("📉 Historical Stock Prices")
 
-        candle_fig = go.Figure(
+        fig3 = go.Figure(
             data=[
                 go.Candlestick(
                     x=data.index,
@@ -285,20 +286,11 @@ if ticker_symbol:
             ]
         )
 
-        candle_fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Price",
-            template="plotly_dark"
-        )
-
         st.plotly_chart(
-            candle_fig,
+            fig3,
             use_container_width=True
         )
 
-    # ---------------------------------------------------
-    # Error Handling
-    # ---------------------------------------------------
     except Exception as e:
 
         st.error(f"❌ Error: {str(e)}")
